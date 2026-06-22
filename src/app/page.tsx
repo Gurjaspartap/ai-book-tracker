@@ -366,7 +366,7 @@ export default function Home() {
       {/* HEADER SECTION */}
       <header className="app-header">
         <div className="logo-section">
-          <h1>AuraBooks</h1>
+          <h1>PB23 Reads</h1>
           <p>AI-Powered Personal Library Tracker</p>
         </div>
 
