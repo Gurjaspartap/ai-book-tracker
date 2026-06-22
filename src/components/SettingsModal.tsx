@@ -13,14 +13,14 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onClose, onSave }: SettingsModalProps) {
   const [provider, setProvider] = useState("gemini");
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gemini-1.5-flash");
+  const [model, setModel] = useState("gemini-2.5-flash-lite");
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   
   const [supabaseUrl, setSupabaseUrl] = useState("");
   const [supabaseKey, setSupabaseKey] = useState("");
-
+ 
   const [importStatus, setImportStatus] = useState<string | null>(null);
-
+ 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setProvider(localStorage.getItem("ai_provider") || "gemini");
@@ -31,20 +31,20 @@ export default function SettingsModal({ isOpen, onClose, onSave }: SettingsModal
         setModel(savedModel);
       } else {
         // Set default based on provider
-        setModel("gemini-1.5-flash");
+        setModel("gemini-2.5-flash-lite");
       }
-
+ 
       setOllamaUrl(localStorage.getItem("ollama_url") || "http://localhost:11434");
       setSupabaseUrl(localStorage.getItem("supabase_url") || "");
       setSupabaseKey(localStorage.getItem("supabase_anon_key") || "");
     }
   }, [isOpen]);
-
+ 
   if (!isOpen) return null;
-
+ 
   const handleProviderChange = (newProvider: string) => {
     setProvider(newProvider);
-    if (newProvider === "gemini") setModel("gemini-1.5-flash");
+    if (newProvider === "gemini") setModel("gemini-2.5-flash-lite");
     else if (newProvider === "openai") setModel("gpt-4o-mini");
     else if (newProvider === "claude") setModel("claude-3-5-sonnet-20240620");
     else if (newProvider === "ollama") setModel("llama3.2");
@@ -173,7 +173,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }: SettingsModal
                     className="form-input"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    placeholder={provider === "gemini" ? "gemini-1.5-flash" : provider === "openai" ? "gpt-4o-mini" : "claude-3-5-sonnet-20240620"}
+                    placeholder={provider === "gemini" ? "gemini-2.5-flash-lite" : provider === "openai" ? "gpt-4o-mini" : "claude-3-5-sonnet-20240620"}
                   />
                 </div>
               </>

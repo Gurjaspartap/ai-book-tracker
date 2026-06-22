@@ -2,11 +2,32 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const { provider, apiKey, model, messages, systemPrompt } = await request.json();
+    const { provider, apiKey: clientApiKey, model, messages, systemPrompt } = await request.json();
 
-    if (!provider || !apiKey || !messages || !Array.isArray(messages)) {
+    if (!provider || !messages || !Array.isArray(messages)) {
       return NextResponse.json(
-        { error: "Missing required fields (provider, apiKey, messages)" },
+        { error: "Missing required fields (provider, messages)" },
+        { status: 400 }
+      );
+    }
+
+    // Resolve API key: prioritize client key, fall back to server env key
+    let apiKey = clientApiKey;
+    if (!apiKey) {
+      if (provider === "gemini") {
+        apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      } else if (provider === "openai") {
+        apiKey = process.env.OPENAI_API_KEY;
+      } else if (provider === "claude") {
+        apiKey = process.env.ANTHROPIC_API_KEY;
+      }
+    }
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          error: `API key is missing for provider: ${provider.toUpperCase()}. Please configure it in your server environment variables (e.g. GEMINI_API_KEY for Vercel deployment) or enter it in Settings.`
+        },
         { status: 400 }
       );
     }
@@ -27,7 +48,7 @@ export async function POST(request: Request) {
         : undefined;
 
       // Map models if needed
-      const geminiModel = model || "gemini-1.5-flash";
+      const geminiModel = model || process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
 

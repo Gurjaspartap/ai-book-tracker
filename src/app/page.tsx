@@ -139,12 +139,8 @@ export default function Home() {
   const runAICall = async (prompt: string, systemPrompt?: string) => {
     const aiProvider = localStorage.getItem("ai_provider") || "gemini";
     const aiApiKey = localStorage.getItem("ai_api_key") || "";
-    const aiModel = localStorage.getItem("ai_model") || "gemini-1.5-flash";
+    const aiModel = localStorage.getItem("ai_model") || "gemini-2.5-flash-lite";
     const ollamaUrl = localStorage.getItem("ollama_url") || "http://localhost:11434";
-
-    if (aiProvider !== "ollama" && !aiApiKey) {
-      throw new Error(`API key is missing for provider: ${aiProvider.toUpperCase()}. Please configure it in Settings.`);
-    }
 
     if (aiProvider === "ollama") {
       const response = await fetch(`${ollamaUrl}/api/generate`, {
