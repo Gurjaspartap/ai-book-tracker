@@ -64,25 +64,33 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
 
   if (!isOpen || !book) return null;
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = async (overrides?: { status?: Book["status"]; current_page?: number; rating?: number }) => {
     try {
       const categories = categoriesInput
         .split(",")
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0);
 
+      const finalStatus = overrides?.status !== undefined ? overrides.status : status;
+      let finalCurrentPage = overrides?.current_page !== undefined ? overrides.current_page : currentPage;
+      const finalTotalPages = totalPages;
+
+      if (finalStatus === "completed" && finalTotalPages > 0) {
+        finalCurrentPage = finalTotalPages;
+      }
+
       // Enforce current_page boundaries
-      const validatedPage = Math.min(currentPage, totalPages);
+      const validatedPage = Math.min(finalCurrentPage, finalTotalPages);
 
       await updateBook(book.id, {
         title,
         author,
         description,
         cover_url: coverUrl,
-        status: validatedPage === totalPages && totalPages > 0 ? "completed" : status,
+        status: validatedPage === finalTotalPages && finalTotalPages > 0 ? "completed" : finalStatus,
         current_page: validatedPage,
-        total_pages: totalPages,
-        rating,
+        total_pages: finalTotalPages,
+        rating: overrides?.rating !== undefined ? overrides.rating : rating,
         categories,
         notes,
       });
@@ -316,7 +324,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Book Title"
-                onBlur={handleSaveChanges}
+                onBlur={() => handleSaveChanges()}
               />
               <input
                 type="text"
@@ -325,7 +333,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
                 placeholder="Author"
-                onBlur={handleSaveChanges}
+                onBlur={() => handleSaveChanges()}
               />
 
               <div className="form-group" style={{ marginTop: "0.5rem" }}>
@@ -336,7 +344,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                   value={categoriesInput}
                   onChange={(e) => setCategoriesInput(e.target.value)}
                   placeholder="e.g. Science Fiction, Classics"
-                  onBlur={handleSaveChanges}
+                  onBlur={() => handleSaveChanges()}
                 />
               </div>
 
@@ -346,7 +354,16 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                   <select
                     className="filter-select"
                     value={status}
-                    onChange={(e) => { setStatus(e.target.value as Book["status"]); setTimeout(handleSaveChanges, 0); }}
+                    onChange={(e) => { 
+                      const newStatus = e.target.value as Book["status"];
+                      setStatus(newStatus); 
+                      if (newStatus === "completed" && totalPages > 0) {
+                        setCurrentPage(totalPages);
+                        handleSaveChanges({ status: newStatus, current_page: totalPages });
+                      } else {
+                        handleSaveChanges({ status: newStatus });
+                      }
+                    }}
                     style={{ width: "100%", padding: "0.4rem 1.5rem 0.4rem 0.6rem" }}
                   >
                     <option value="will-read">Want to Read</option>
@@ -362,7 +379,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                     className="form-input"
                     value={currentPage}
                     onChange={(e) => { setCurrentPage(Math.max(0, parseInt(e.target.value) || 0)); }}
-                    onBlur={handleSaveChanges}
+                    onBlur={() => handleSaveChanges()}
                     style={{ padding: "0.4rem 0.6rem" }}
                     min="0"
                   />
@@ -375,7 +392,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                     className="form-input"
                     value={totalPages}
                     onChange={(e) => { setTotalPages(Math.max(0, parseInt(e.target.value) || 0)); }}
-                    onBlur={handleSaveChanges}
+                    onBlur={() => handleSaveChanges()}
                     style={{ padding: "0.4rem 0.6rem" }}
                     min="0"
                   />
@@ -391,7 +408,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                         key={i}
                         type="button"
                         className={`rating-star-btn ${rating && rating > i ? "active" : ""}`}
-                        onClick={() => { setRating(i + 1); setTimeout(handleSaveChanges, 0); }}
+                        onClick={() => { setRating(i + 1); handleSaveChanges({ rating: i + 1 }); }}
                       >
                         ★
                       </button>
@@ -400,7 +417,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                       <button
                         type="button"
                         style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "0.75rem", cursor: "pointer", marginLeft: "0.25rem" }}
-                        onClick={() => { setRating(undefined); setTimeout(handleSaveChanges, 0); }}
+                        onClick={() => { setRating(undefined); handleSaveChanges({ rating: 0 }); }}
                       >
                         Clear
                       </button>
@@ -414,7 +431,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                     className="form-input"
                     value={coverUrl}
                     onChange={(e) => setCoverUrl(e.target.value)}
-                    onBlur={handleSaveChanges}
+                    onBlur={() => handleSaveChanges()}
                     placeholder="Image URL"
                     style={{ padding: "0.4rem 0.6rem" }}
                   />
@@ -453,7 +470,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                   className="form-textarea"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  onBlur={handleSaveChanges}
+                  onBlur={() => handleSaveChanges()}
                   placeholder="Summarize the book details..."
                   rows={6}
                 />

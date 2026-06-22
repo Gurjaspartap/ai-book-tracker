@@ -47,7 +47,11 @@ export async function GET(request: Request) {
       console.log(`Falling back to OpenLibrary Search API for query: "${query}"`);
       try {
         const fields = "key,title,author_name,cover_i,subject,number_of_pages_median,first_publish_year";
-        const olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=${fields}&limit=8`;
+        let olQuery = query;
+        if (query.startsWith("inauthor:")) {
+          olQuery = `author:${query.substring(9)}`;
+        }
+        const olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(olQuery)}&fields=${fields}&limit=8`;
 
         const res = await fetch(olUrl, {
           method: "GET",

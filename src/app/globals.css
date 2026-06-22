@@ -969,3 +969,204 @@ html, body {
 .rating-star-btn:hover {
   transform: scale(1.15);
 }
+
+/* Navigation Tab Group (homepage views) */
+.view-tabs-container {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.view-tab-btn {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
+}
+
+.view-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+}
+
+.view-tab-btn.active {
+  background: var(--color-primary-glow);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* AI Insights Panel */
+.insights-panel {
+  background: var(--bg-surface);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  line-height: 1.7;
+}
+
+.insights-panel h1, .insights-panel h2, .insights-panel h3, .insights-panel h4 {
+  color: #ffffff;
+  font-weight: 800;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.insights-panel h2 {
+  font-size: 1.35rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.35rem;
+}
+
+.insights-panel h3 {
+  font-size: 1.15rem;
+  color: #a5b4fc;
+}
+
+.insights-panel p {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.insights-panel ul, .insights-panel ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.insights-panel li {
+  margin-bottom: 0.35rem;
+}
+
+/* Favorite Authors Section */
+.authors-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.author-add-box {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 480px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  border-radius: var(--radius-lg);
+}
+
+.author-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.author-row-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.author-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+}
+
+.author-name-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.author-books-scroll {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  scrollbar-width: thin;
+}
+
+.author-book-mini-card {
+  width: 140px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  padding: 0.5rem;
+  transition: var(--transition-fast);
+  position: relative;
+}
+
+.author-book-mini-card:hover {
+  border-color: var(--color-primary-focus);
+  transform: translateY(-2px);
+}
+
+.author-book-cover-container {
+  width: 100%;
+  height: 160px;
+  background: var(--bg-main);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.author-book-cover {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.author-book-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: hidden;
+}
+
+.author-book-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff;
+}
+
+.author-book-year {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.author-book-btn {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  width: 100%;
+  height: 26px;
+  margin-top: auto;
+}

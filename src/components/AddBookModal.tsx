@@ -98,7 +98,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }: AddBookMo
         cover_url: coverUrl,
         categories,
         status,
-        current_page: 0,
+        current_page: status === "completed" ? totalPages : 0,
         total_pages: totalPages,
         notes: "",
       });

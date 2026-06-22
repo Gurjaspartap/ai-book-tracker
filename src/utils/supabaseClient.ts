@@ -14,6 +14,7 @@ export function getSupabaseClient(): SupabaseClient | null {
     (typeof window !== "undefined" ? localStorage.getItem("supabase_url") : null);
   const rawKey =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     (typeof window !== "undefined" ? localStorage.getItem("supabase_anon_key") : null);
 
   const url = isValidString(rawUrl) ? rawUrl!.trim() : null;
