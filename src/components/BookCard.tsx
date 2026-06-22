@@ -19,6 +19,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
     "will-read": "Want to Read",
     "reading": "Reading",
     "completed": "Completed",
+    "not-completed": "Not Completed",
   };
 
   // Render rating stars helper
@@ -86,7 +87,7 @@ export default function BookCard({ book, onClick }: BookCardProps) {
           </div>
           <div className="progress-track">
             <div 
-              className={`progress-bar ${status === "completed" ? "completed" : ""}`}
+              className={`progress-bar ${status === "completed" ? "completed" : status === "not-completed" ? "not-completed" : ""}`}
               style={{ width: `${progressPercent}%` }}
             ></div>
           </div>

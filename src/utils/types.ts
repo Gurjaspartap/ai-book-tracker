@@ -6,7 +6,7 @@ export interface Book {
   description: string;
   cover_url: string;
   categories: string[];
-  status: "will-read" | "reading" | "completed";
+  status: "will-read" | "reading" | "completed" | "not-completed";
   current_page: number;
   total_pages: number;
   rating?: number; // 1 to 5

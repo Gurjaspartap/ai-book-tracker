@@ -7,7 +7,7 @@ create table public.books (
   description text,
   cover_url text,
   categories text[] default '{}'::text[],
-  status text not null check (status in ('will-read', 'reading', 'completed')),
+  status text not null check (status in ('will-read', 'reading', 'completed', 'not-completed')),
   current_page integer default 0,
   total_pages integer default 0,
   rating integer check (rating >= 1 and rating <= 5),

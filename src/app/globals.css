@@ -19,6 +19,8 @@
   --color-reading-bg: rgba(251, 191, 36, 0.1);
   --color-completed: #34d399;
   --color-completed-bg: rgba(52, 211, 153, 0.1);
+  --color-not-completed: #f87171;
+  --color-not-completed-bg: rgba(248, 113, 113, 0.1);
   
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -195,6 +197,7 @@ html, body {
 .metric-card.will-read::before { background-color: var(--color-will-read); }
 .metric-card.reading::before { background-color: var(--color-reading); }
 .metric-card.completed::before { background-color: var(--color-completed); }
+.metric-card.not-completed::before { background-color: var(--color-not-completed); }
 
 .metric-label {
   font-size: 0.75rem;
@@ -400,6 +403,7 @@ html, body {
 .card-badge.will-read { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.3); }
 .card-badge.reading { background: rgba(251, 191, 36, 0.2); color: #fde047; border: 1px solid rgba(251, 191, 36, 0.3); }
 .card-badge.completed { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; border: 1px solid rgba(52, 211, 153, 0.3); }
+.card-badge.not-completed { background: rgba(248, 113, 113, 0.2); color: #fca5a5; border: 1px solid rgba(248, 113, 113, 0.3); }
 
 .card-body {
   padding: 1.25rem;
@@ -478,6 +482,10 @@ html, body {
 
 .progress-bar.completed {
   background: var(--color-completed);
+}
+
+.progress-bar.not-completed {
+  background: var(--color-not-completed);
 }
 
 .card-rating {

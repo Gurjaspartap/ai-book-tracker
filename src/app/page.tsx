@@ -21,7 +21,7 @@ export default function Home() {
   const [activeView, setActiveView] = useState<"shelf" | "insights" | "authors">("shelf");
 
   // Shelf View: Filtering & Sorting State
-  const [activeTab, setActiveTab] = useState<"all" | "will-read" | "reading" | "completed">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "will-read" | "reading" | "completed" | "not-completed">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
   const [sortBy, setSortBy] = useState("updated_at");
@@ -402,6 +402,7 @@ export default function Home() {
   const willReadCount = books.filter((b) => b.status === "will-read").length;
   const readingCount = books.filter((b) => b.status === "reading").length;
   const completedCount = books.filter((b) => b.status === "completed").length;
+  const notCompletedCount = books.filter((b) => b.status === "not-completed").length;
 
   return (
     <div className="app-container">
@@ -467,6 +468,10 @@ export default function Home() {
           <span className="metric-label">Completed</span>
           <span className="metric-value">{completedCount}</span>
         </div>
+        <div className="metric-card not-completed" onClick={() => { setActiveView("shelf"); setActiveTab("not-completed"); }} style={{ cursor: "pointer" }}>
+          <span className="metric-label">Not Completed</span>
+          <span className="metric-value">{notCompletedCount}</span>
+        </div>
       </section>
 
       {/* NAVIGATION TABS (SHELF, INSIGHTS, AUTHORS) */}
@@ -520,6 +525,12 @@ export default function Home() {
                 onClick={() => setActiveTab("completed")}
               >
                 Completed
+              </button>
+              <button 
+                className={`tab-btn ${activeTab === "not-completed" ? "active" : ""}`}
+                onClick={() => setActiveTab("not-completed")}
+              >
+                Not Completed
               </button>
             </div>
 

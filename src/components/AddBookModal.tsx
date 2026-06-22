@@ -275,9 +275,10 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }: AddBookMo
                   onChange={(e) => setStatus(e.target.value as Book["status"])}
                   style={{ width: "100%" }}
                 >
-                  <option value="will-read">Want to Read</option>
-                  <option value="reading">Currently Reading</option>
-                  <option value="completed">Completed</option>
+                   <option value="will-read">Want to Read</option>
+                   <option value="reading">Currently Reading</option>
+                   <option value="completed">Completed</option>
+                   <option value="not-completed">Not Completed</option>
                 </select>
               </div>
 

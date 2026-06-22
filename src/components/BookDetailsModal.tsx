@@ -294,7 +294,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
         <div className="modal-header">
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
             <span className={`card-badge ${status}`} style={{ position: "static" }}>
-              {status === "will-read" ? "Want to Read" : status === "reading" ? "Reading" : "Completed"}
+              {status === "will-read" ? "Want to Read" : status === "reading" ? "Reading" : status === "completed" ? "Completed" : "Not Completed"}
             </span>
           </div>
           <button className="modal-close" onClick={onClose}>&times;</button>
@@ -365,6 +365,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                     <option value="will-read">Want to Read</option>
                     <option value="reading">Reading</option>
                     <option value="completed">Completed</option>
+                    <option value="not-completed">Not Completed</option>
                   </select>
                 </div>
                 
