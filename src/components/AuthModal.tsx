@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { getSupabaseClient } from "@/utils/supabaseClient";
 import { syncLocalBooksToCloud } from "@/utils/booksStore";
+import { syncLocalAuthorsToCloud } from "@/utils/authorsStore";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -69,14 +70,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           type: "success",
         });
 
-        // Trigger sync of local storage books to cloud database
+        // Trigger sync of local storage books & authors to cloud database
         try {
-          const syncedCount = await syncLocalBooksToCloud();
-          if (syncedCount > 0) {
-            console.log(`Synced ${syncedCount} local books to Supabase`);
+          const [syncedBooks, syncedAuthors] = await Promise.all([
+            syncLocalBooksToCloud(),
+            syncLocalAuthorsToCloud()
+          ]);
+          if (syncedBooks > 0) {
+            console.log(`Synced ${syncedBooks} local books to Supabase`);
+          }
+          if (syncedAuthors > 0) {
+            console.log(`Synced ${syncedAuthors} local authors to Supabase`);
           }
         } catch (syncErr) {
-          console.error("Failed to sync books after login:", syncErr);
+          console.error("Failed to sync local data after login:", syncErr);
         }
 
         setTimeout(() => {

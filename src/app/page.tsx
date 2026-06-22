@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Book } from "@/utils/types";
+import { Book, FavoriteAuthor } from "@/utils/types";
 import { getBooks, getLocalBooks, addBook } from "@/utils/booksStore";
 import { getSupabaseClient } from "@/utils/supabaseClient";
+import { getFavoriteAuthors, addFavoriteAuthor, deleteFavoriteAuthor, getLocalAuthors } from "@/utils/authorsStore";
 
 // Import components
 import BookCard from "@/components/BookCard";
@@ -11,14 +12,6 @@ import AddBookModal from "@/components/AddBookModal";
 import BookDetailsModal from "@/components/BookDetailsModal";
 import SettingsModal from "@/components/SettingsModal";
 import AuthModal from "@/components/AuthModal";
-
-interface FavoriteAuthor {
-  id: string;
-  name: string;
-  books?: any[];
-  loading?: boolean;
-  error?: string | null;
-}
 
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -81,23 +74,30 @@ export default function Home() {
         setBooks(library);
       }
 
+      // Load favorite authors list from DB or local fallback
+      const authorsList = await getFavoriteAuthors();
+      if (reqId === requestCountRef.current) {
+        setFavoriteAuthors(authorsList);
+        
+        // Fetch background bibliographies
+        authorsList.forEach((author) => {
+          fetchAuthorBooks(author.name, author.id);
+        });
+      }
+
       // Hydrate local cache items
       if (typeof window !== "undefined" && reqId === requestCountRef.current) {
         setAiInsights(localStorage.getItem("ai_insights") || "");
-        
-        const savedAuthors = localStorage.getItem("favorite_authors");
-        if (savedAuthors) {
-          try {
-            setFavoriteAuthors(JSON.parse(savedAuthors));
-          } catch (e) {
-            console.error("Failed to parse favorite authors:", e);
-          }
-        }
       }
     } catch (err) {
       console.error("Failed to load data:", err);
       if (reqId === requestCountRef.current) {
         setBooks(getLocalBooks());
+        const localAuthors = getLocalAuthors();
+        setFavoriteAuthors(localAuthors);
+        localAuthors.forEach((author) => {
+          fetchAuthorBooks(author.name, author.id);
+        });
       }
     } finally {
       if (reqId === requestCountRef.current) {
@@ -255,13 +255,11 @@ export default function Home() {
       const data = await res.json();
       const fetchedBooks = data.items || [];
 
-      setFavoriteAuthors((prev) => {
-        const updated = prev.map((a) =>
+      setFavoriteAuthors((prev) => 
+        prev.map((a) =>
           a.id === authorId ? { ...a, books: fetchedBooks, loading: false } : a
-        );
-        localStorage.setItem("favorite_authors", JSON.stringify(updated));
-        return updated;
-      });
+        )
+      );
     } catch (err: any) {
       console.error(err);
       setFavoriteAuthors((prev) =>
@@ -273,36 +271,65 @@ export default function Home() {
   };
 
   // Favorite Authors: Add author
-  const handleAddAuthor = (e: React.FormEvent) => {
+  const handleAddAuthor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAuthorName.trim()) return;
 
     const authorName = newAuthorName.trim();
-    const authorId = "author_" + Math.random().toString(36).substring(2, 11);
-
-    const newAuthor: FavoriteAuthor = {
-      id: authorId,
+    
+    // Show a temporary author item in loading state
+    const tempId = "temp_" + Math.random().toString(36).substring(2, 9);
+    const tempAuthor: FavoriteAuthor = {
+      id: tempId,
       name: authorName,
+      bio: "Generating biography...",
       books: [],
-      loading: false,
-      error: null,
+      loading: true,
+      error: null
     };
-
-    const updatedAuthors = [...favoriteAuthors, newAuthor];
-    setFavoriteAuthors(updatedAuthors);
-    localStorage.setItem("favorite_authors", JSON.stringify(updatedAuthors));
+    
+    setFavoriteAuthors(prev => [...prev, tempAuthor]);
     setNewAuthorName("");
 
-    // Trigger fetch
-    fetchAuthorBooks(authorName, authorId);
+    try {
+      // 1. Generate bio using AI
+      let bio = "";
+      try {
+        const systemPrompt = "You are a literary historian. Provide a brief, engaging biography about the author (1 to 2 sentences max). Do not include markdown formatting, quotes, or headers. Write only the plain text.";
+        const prompt = `Write a short 1-2 sentence biography of the author ${authorName}.`;
+        const aiResponse = await runAICall(prompt, systemPrompt);
+        bio = aiResponse ? aiResponse.trim() : "";
+      } catch (aiErr) {
+        console.error("Failed to generate bio with AI:", aiErr);
+        bio = "A celebrated author of literary works."; // fallback
+      }
+
+      // 2. Save author to DB or local storage fallback
+      const savedAuthor = await addFavoriteAuthor({ name: authorName, bio });
+      
+      // 3. Replace temp author with saved author in state
+      setFavoriteAuthors(prev => prev.map(a => a.id === tempId ? { ...savedAuthor, books: [], loading: true } : a));
+      
+      // 4. Fetch books
+      await fetchAuthorBooks(authorName, savedAuthor.id);
+    } catch (err: any) {
+      console.error(err);
+      // Remove temp author if failed
+      setFavoriteAuthors(prev => prev.filter(a => a.id !== tempId));
+      alert("Failed to add favorite author. Please check your network and configuration.");
+    }
   };
 
   // Favorite Authors: Remove author
-  const handleRemoveAuthor = (authorId: string) => {
+  const handleRemoveAuthor = async (authorId: string) => {
     if (confirm("Are you sure you want to remove this author?")) {
-      const updated = favoriteAuthors.filter((a) => a.id !== authorId);
-      setFavoriteAuthors(updated);
-      localStorage.setItem("favorite_authors", JSON.stringify(updated));
+      try {
+        await deleteFavoriteAuthor(authorId);
+        setFavoriteAuthors((prev) => prev.filter((a) => a.id !== authorId));
+      } catch (err) {
+        console.error("Failed to delete author:", err);
+        alert("Failed to remove favorite author.");
+      }
     }
   };
 
@@ -671,6 +698,18 @@ export default function Home() {
                       Remove
                     </button>
                   </div>
+
+                  {author.bio && (
+                    <p style={{ 
+                      fontSize: "0.85rem", 
+                      color: "var(--text-secondary)", 
+                      margin: "0.25rem 0 0.75rem 2rem", 
+                      fontStyle: "italic", 
+                      lineHeight: "1.4" 
+                    }}>
+                      {author.bio}
+                    </p>
+                  )}
 
                   {author.loading && (
                     <div style={{ padding: "1rem", textAlign: "center", color: "var(--text-secondary)" }}>

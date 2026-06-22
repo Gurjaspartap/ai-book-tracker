@@ -31,3 +31,29 @@ create policy "Users can update their own books" on public.books
 
 create policy "Users can delete their own books" on public.books
   for delete using (auth.uid() = user_id);
+
+-- Create favorite_authors table
+create table public.favorite_authors (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null,
+  bio text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable Row Level Security
+alter table public.favorite_authors enable row level security;
+
+-- Policies for RLS isolation
+create policy "Users can view their own favorite authors" on public.favorite_authors
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own favorite authors" on public.favorite_authors
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own favorite authors" on public.favorite_authors
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete their own favorite authors" on public.favorite_authors
+  for delete using (auth.uid() = user_id);

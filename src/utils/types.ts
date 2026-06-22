@@ -14,3 +14,15 @@ export interface Book {
   created_at: string;
   updated_at: string;
 }
+
+export interface FavoriteAuthor {
+  id: string;
+  user_id?: string;
+  name: string;
+  bio?: string;
+  books?: any[];
+  loading?: boolean;
+  error?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
