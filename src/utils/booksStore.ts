@@ -10,22 +10,26 @@ function generateLocalId() {
 
 // Fetch all books
 export async function getBooks(): Promise<Book[]> {
-  const supabase = getSupabaseClient();
-  if (supabase) {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (sessionData?.session?.user) {
-      const { data, error } = await supabase
-        .from("books")
-        .select("*")
-        .order("updated_at", { ascending: false });
+  try {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        const { data, error } = await supabase
+          .from("books")
+          .select("*")
+          .order("updated_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching books from Supabase:", error);
-        // Fallback to local storage if DB query fails
-        return getLocalBooks();
+        if (error) {
+          console.error("Error fetching books from Supabase:", error);
+          // Fallback to local storage if DB query fails
+          return getLocalBooks();
+        }
+        return data as Book[];
       }
-      return data as Book[];
     }
+  } catch (err) {
+    console.error("Error in getBooks:", err);
   }
   return getLocalBooks();
 }

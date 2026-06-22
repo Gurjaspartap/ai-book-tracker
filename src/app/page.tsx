@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Book } from "@/utils/types";
 import { getBooks, getLocalBooks, addBook } from "@/utils/booksStore";
 import { getSupabaseClient } from "@/utils/supabaseClient";
@@ -53,25 +53,36 @@ export default function Home() {
   const [addOpen, setAddOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
+  const requestCountRef = useRef(0);
+  const currentUserIdRef = useRef<string | null>(null);
+
   // Load books, auth state, cached insights and authors
   const loadData = async () => {
+    const reqId = ++requestCountRef.current;
     setLoading(true);
     try {
       const supabase = getSupabaseClient();
+      let activeUser = null;
       if (supabase) {
         setSupabaseActive(true);
         const { data: sessionData } = await supabase.auth.getSession();
-        setUser(sessionData?.session?.user || null);
+        activeUser = sessionData?.session?.user || null;
       } else {
         setSupabaseActive(false);
-        setUser(null);
+      }
+      
+      if (reqId === requestCountRef.current) {
+        setUser(activeUser);
+        currentUserIdRef.current = activeUser ? activeUser.id : null;
       }
       
       const library = await getBooks();
-      setBooks(library);
+      if (reqId === requestCountRef.current) {
+        setBooks(library);
+      }
 
       // Hydrate local cache items
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && reqId === requestCountRef.current) {
         setAiInsights(localStorage.getItem("ai_insights") || "");
         
         const savedAuthors = localStorage.getItem("favorite_authors");
@@ -85,9 +96,13 @@ export default function Home() {
       }
     } catch (err) {
       console.error("Failed to load data:", err);
-      setBooks(getLocalBooks());
+      if (reqId === requestCountRef.current) {
+        setBooks(getLocalBooks());
+      }
     } finally {
-      setLoading(false);
+      if (reqId === requestCountRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -109,15 +124,19 @@ export default function Home() {
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
-          setUser(session?.user || null);
+          const newUserId = session?.user?.id || null;
           
           if (event === "PASSWORD_RECOVERY") {
             setAuthInitialMode("update");
             setAuthOpen(true);
           }
 
-          const library = await getBooks();
-          setBooks(library);
+          // If the logged in user actually changed, or they logged in/out, reload books
+          if (newUserId !== currentUserIdRef.current) {
+            currentUserIdRef.current = newUserId;
+            setUser(session?.user || null);
+            loadData();
+          }
         }
       );
       return () => {
