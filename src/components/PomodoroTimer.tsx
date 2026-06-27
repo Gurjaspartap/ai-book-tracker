@@ -6,17 +6,28 @@ import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 import { getSupabaseClient } from "@/utils/supabaseClient";
 
+import { getBooks } from "@/utils/booksStore";
+import { Book } from "@/utils/types";
+
 interface PomodoroTimerProps {
   bookId?: string; // Optional book id if tied to a book
+  bookTitle?: string; // Optional book title for display
   onClose?: () => void;
+  onSelectBookRequest?: () => void; // Triggered when "Select Book" is clicked
+  onClearBook?: () => void; // Triggered when clearing the selection
 }
 
-export default function PomodoroTimer({ bookId, onClose }: PomodoroTimerProps) {
-  const DEFAULT_MINUTES = 25;
-  const [timeLeft, setTimeLeft] = useState(DEFAULT_MINUTES * 60);
+export default function PomodoroTimer({ bookId, bookTitle, onClose, onSelectBookRequest, onClearBook }: PomodoroTimerProps) {
+  const [durationMinutes, setDurationMinutes] = useState(25);
+  const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
   const [isActive, setIsActive] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  
+  // Inline editing state
+  const [isEditingTime, setIsEditingTime] = useState(false);
+  const [inputMinutes, setInputMinutes] = useState(durationMinutes.toString());
   
   const { width, height } = useWindowSize();
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -74,6 +85,55 @@ export default function PomodoroTimer({ bookId, onClose }: PomodoroTimerProps) {
     }
   };
 
+  // Load state from local storage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("pomodoro_timer_state");
+        if (stored) {
+          const state = JSON.parse(stored);
+          if (state.durationMinutes) setDurationMinutes(state.durationMinutes);
+          setIsActive(state.isActive || false);
+          setIsFinished(state.isFinished || false);
+          if (state.sessionStartTime) setSessionStartTime(state.sessionStartTime);
+          
+          if (state.isActive && state.sessionStartTime) {
+            const secondsElapsed = Math.floor((Date.now() - state.sessionStartTime) / 1000);
+            const newTimeLeft = (state.durationMinutes * 60) - secondsElapsed;
+            if (newTimeLeft > 0) {
+              setTimeLeft(newTimeLeft);
+            } else {
+              setTimeLeft(0);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load timer state", e);
+      }
+      setHasHydrated(true);
+    }
+  }, []);
+
+  // Save state to local storage whenever it changes
+  useEffect(() => {
+    if (typeof window !== "undefined" && hasHydrated) {
+      const state = {
+        isActive,
+        sessionStartTime,
+        durationMinutes,
+        isFinished
+      };
+      localStorage.setItem("pomodoro_timer_state", JSON.stringify(state));
+    }
+  }, [isActive, sessionStartTime, durationMinutes, isFinished, hasHydrated]);
+
+  // Reset timer when duration changes, if not active
+  useEffect(() => {
+    if (!isActive && hasHydrated) {
+      setTimeLeft(durationMinutes * 60);
+    }
+  }, [durationMinutes, isActive, hasHydrated]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -115,7 +175,7 @@ export default function PomodoroTimer({ bookId, onClose }: PomodoroTimerProps) {
       const secondsElapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
       logSession(secondsElapsed);
     }
-    setTimeLeft(DEFAULT_MINUTES * 60);
+    setTimeLeft(durationMinutes * 60);
     setSessionStartTime(null);
     setIsFinished(false);
   };
@@ -126,6 +186,27 @@ export default function PomodoroTimer({ bookId, onClose }: PomodoroTimerProps) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const handleTimeSubmit = () => {
+    let newMins = parseInt(inputMinutes, 10);
+    if (isNaN(newMins) || newMins < 1) newMins = 1;
+    if (newMins > 999) newMins = 999;
+    
+    setDurationMinutes(newMins);
+    setTimeLeft(newMins * 60);
+    setInputMinutes(newMins.toString());
+    setIsEditingTime(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTimeSubmit();
+    }
+    if (e.key === 'Escape') {
+      setIsEditingTime(false);
+      setInputMinutes(durationMinutes.toString());
+    }
+  };
+
   if (isFinished) {
     return (
       <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.8)", backdropFilter: "blur(5px)" }}>
@@ -133,7 +214,7 @@ export default function PomodoroTimer({ bookId, onClose }: PomodoroTimerProps) {
         <div style={{ background: "var(--bg-surface-elevated)", padding: "2rem", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-color)", textAlign: "center", maxWidth: "350px", width: "90%", boxShadow: "var(--shadow-lg)" }}>
           <h2 style={{ fontSize: "1.75rem", marginBottom: "1rem" }}>Time's Up!</h2>
           <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
-            Great job! You completed your {DEFAULT_MINUTES} minute reading session.
+            Great job! You completed your {durationMinutes} minute reading session.
           </p>
           <div style={{ fontSize: "4rem", margin: "1rem 0" }}>🎉</div>
           <button
@@ -175,11 +256,51 @@ export default function PomodoroTimer({ bookId, onClose }: PomodoroTimerProps) {
         Focus Timer
       </div>
       
-      <div style={{ fontSize: "3rem", fontWeight: "bold", fontFamily: "monospace", margin: "1rem 0", color: "var(--text-primary)" }}>
-        {formatTime(timeLeft)}
+      <div 
+        style={{ fontSize: "3rem", fontWeight: "bold", fontFamily: "monospace", margin: "1rem 0 0.5rem", color: "var(--text-primary)", cursor: isActive ? "default" : "pointer" }}
+        onClick={() => { if (!isActive) { setIsEditingTime(true); setInputMinutes(durationMinutes.toString()); } }}
+        title={isActive ? "" : "Click to edit time"}
+      >
+        {isEditingTime && !isActive ? (
+          <input
+            type="number"
+            value={inputMinutes}
+            onChange={(e) => setInputMinutes(e.target.value)}
+            onBlur={handleTimeSubmit}
+            onKeyDown={handleKeyDown}
+            autoFocus
+            style={{ width: "120px", fontSize: "3rem", fontWeight: "bold", fontFamily: "monospace", background: "rgba(0,0,0,0.3)", border: "1px solid var(--color-primary)", color: "var(--text-primary)", textAlign: "center", borderRadius: "var(--radius-md)" }}
+          />
+        ) : (
+          formatTime(timeLeft)
+        )}
       </div>
+
+      {onSelectBookRequest && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", width: "100%", marginBottom: "1rem" }}>
+          {bookId ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)" }}>
+              <span style={{ fontSize: "0.85rem", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }} title={bookTitle || "Selected Book"}>
+                📚 {bookTitle && bookTitle.length > 20 ? bookTitle.substring(0, 20) + '...' : bookTitle || "Selected Book"}
+              </span>
+              <button onClick={onClearBook} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", marginLeft: "0.5rem" }} title="Clear book">
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={onSelectBookRequest}
+              style={{ width: "100%", padding: "0.65rem", background: "rgba(255,255,255,0.05)", border: "1px dashed var(--border-color)", borderRadius: "var(--radius-md)", color: "var(--text-secondary)", fontSize: "0.85rem", cursor: "pointer", transition: "var(--transition-fast)" }}
+              onMouseOver={(e) => (e.currentTarget.style.borderColor = "var(--color-primary)")}
+              onMouseOut={(e) => (e.currentTarget.style.borderColor = "var(--border-color)")}
+            >
+              + Select Book
+            </button>
+          )}
+        </div>
+      )}
       
-      <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}>
+      <div style={{ display: "flex", gap: "1rem", marginTop: isActive ? "1rem" : "0.5rem" }}>
         <button
           onClick={toggleTimer}
           className="btn btn-primary"
@@ -190,10 +311,10 @@ export default function PomodoroTimer({ bookId, onClose }: PomodoroTimerProps) {
         
         <button
           onClick={handleStop}
-          disabled={timeLeft === DEFAULT_MINUTES * 60 && !isActive}
+          disabled={timeLeft === durationMinutes * 60 && !isActive}
           className="btn btn-danger"
           title="Stop & Log Time"
-          style={{ width: "3.5rem", height: "3.5rem", borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: (timeLeft === DEFAULT_MINUTES * 60 && !isActive) ? 0.5 : 1 }}
+          style={{ width: "3.5rem", height: "3.5rem", borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: (timeLeft === durationMinutes * 60 && !isActive) ? 0.5 : 1 }}
         >
           <Square size={20} />
         </button>
@@ -201,7 +322,7 @@ export default function PomodoroTimer({ bookId, onClose }: PomodoroTimerProps) {
       
       {/* Subtle progress indicator */}
       <div style={{ width: "100%", height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", marginTop: "1.5rem", overflow: "hidden" }}>
-        <div style={{ height: "100%", background: "var(--color-primary)", width: `${((DEFAULT_MINUTES * 60 - timeLeft) / (DEFAULT_MINUTES * 60)) * 100}%`, transition: "width 1s linear" }} />
+        <div style={{ height: "100%", background: "var(--color-primary)", width: `${((durationMinutes * 60 - timeLeft) / (durationMinutes * 60)) * 100}%`, transition: "width 1s linear" }} />
       </div>
     </div>
   );

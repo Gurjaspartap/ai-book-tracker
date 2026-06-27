@@ -50,6 +50,11 @@ export default function Home() {
   const [globalTimerOpen, setGlobalTimerOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
+  // Timer Selection Mode State
+  const [isSelectingBookForTimer, setIsSelectingBookForTimer] = useState(false);
+  const [globalTimerBookId, setGlobalTimerBookId] = useState<string | null>(null);
+  const [globalTimerBookTitle, setGlobalTimerBookTitle] = useState<string | null>(null);
+
   const requestCountRef = useRef(0);
   const currentUserIdRef = useRef<string | null>(null);
 
@@ -109,6 +114,28 @@ export default function Home() {
       }
     }
   };
+
+  // Hydrate global timer state
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const timerState = localStorage.getItem("pomodoro_timer_state");
+        if (timerState) {
+          const state = JSON.parse(timerState);
+          if (state.isActive || state.isFinished) {
+            setGlobalTimerOpen(true);
+          }
+        }
+        
+        const globalBookId = localStorage.getItem("pomodoro_global_book_id");
+        const globalBookTitle = localStorage.getItem("pomodoro_global_book_title");
+        if (globalBookId) setGlobalTimerBookId(globalBookId);
+        if (globalBookTitle) setGlobalTimerBookTitle(globalBookTitle);
+      } catch (e) {
+        console.error("Failed to hydrate global timer state", e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -461,7 +488,33 @@ export default function Home() {
       {/* GLOBAL POMODORO TIMER OVERLAY */}
       {globalTimerOpen && (
         <div style={{ position: "fixed", bottom: "2rem", right: "2rem", zIndex: 999 }}>
-          <PomodoroTimer onClose={() => setGlobalTimerOpen(false)} />
+          <PomodoroTimer 
+            bookId={globalTimerBookId || undefined} 
+            bookTitle={globalTimerBookTitle || undefined}
+            onClose={() => setGlobalTimerOpen(false)}
+            onSelectBookRequest={() => {
+              setGlobalTimerOpen(false);
+              setIsSelectingBookForTimer(true);
+              setActiveView("shelf");
+              setActiveTab("reading");
+              
+              // Scroll to the book selection area after a brief timeout to let React render
+              setTimeout(() => {
+                const shelf = document.getElementById("bookshelf-grid");
+                if (shelf) {
+                  shelf.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }, 100);
+            }}
+            onClearBook={() => {
+              setGlobalTimerBookId(null);
+              setGlobalTimerBookTitle(null);
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("pomodoro_global_book_id");
+                localStorage.removeItem("pomodoro_global_book_title");
+              }
+            }}
+          />
         </div>
       )}
 
@@ -596,7 +649,36 @@ export default function Home() {
           </section>
 
           {/* BOOKSHELF DISPLAY AREA */}
-          <main className="bookshelf-section">
+          <main className="bookshelf-section" id="bookshelf-grid">
+            
+            {/* Timer Selection Banner */}
+            {isSelectingBookForTimer && (
+              <div style={{ 
+                background: "rgba(99, 102, 241, 0.15)", 
+                border: "1px dashed var(--color-primary)", 
+                padding: "1rem", 
+                borderRadius: "var(--radius-md)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "0.5rem"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <span style={{ fontSize: "1.5rem" }}>⏱️</span>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--text-primary)" }}>Select a book for your Focus Session</h3>
+                    <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)" }}>Click any book below to attribute your timer log to it.</p>
+                  </div>
+                </div>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => { setIsSelectingBookForTimer(false); setGlobalTimerOpen(true); }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
             {loading ? (
               <div className="empty-state" style={{ borderStyle: "solid" }}>
                 <span className="ai-loading-spinner" style={{ width: "2rem", height: "2rem", borderWidth: "3px" }}></span>
@@ -608,7 +690,20 @@ export default function Home() {
                   <BookCard
                     key={book.id}
                     book={book}
-                    onClick={() => setSelectedBook(book)}
+                    onClick={() => {
+                      if (isSelectingBookForTimer) {
+                        setGlobalTimerBookId(book.id);
+                        setGlobalTimerBookTitle(book.title);
+                        if (typeof window !== "undefined") {
+                          localStorage.setItem("pomodoro_global_book_id", book.id);
+                          localStorage.setItem("pomodoro_global_book_title", book.title);
+                        }
+                        setIsSelectingBookForTimer(false);
+                        setGlobalTimerOpen(true);
+                      } else {
+                        setSelectedBook(book);
+                      }
+                    }}
                   />
                 ))}
               </div>
