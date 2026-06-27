@@ -57,7 +57,7 @@ export async function GET(request: Request) {
           method: "GET",
           headers: {
             "Accept": "application/json",
-            "User-Agent": "AuraBooks/1.0 (aurabooks@example.com)",
+            "User-Agent": "PB23READS/1.0 (PB23READS@example.com)",
           },
         });
 

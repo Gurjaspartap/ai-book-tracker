@@ -280,7 +280,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           {mode === "signin" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "center" }}>
               <span>
-                New to AuraBooks?{" "}
+                New to PB23READS?{" "}
                 <button
                   type="button"
                   style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontWeight: "bold" }}

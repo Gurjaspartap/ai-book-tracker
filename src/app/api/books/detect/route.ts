@@ -67,7 +67,7 @@ async function searchBookMetadata(query: string): Promise<any[]> {
       const olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=${fields}&limit=3`;
       const res = await fetch(olUrl, {
         method: "GET",
-        headers: { "User-Agent": "AuraBooks/1.0" }
+        headers: { "User-Agent": "PB23READS/1.0" }
       });
       if (res.ok) {
         const data = await res.json();
