@@ -13,6 +13,10 @@ export interface Book {
   notes: string;
   created_at: string;
   updated_at: string;
+  file_url?: string | null;
+  file_type?: string | null;
+  extracted_text_url?: string | null;
+  language?: string | null;
 }
 
 export interface FavoriteAuthor {
@@ -25,4 +29,12 @@ export interface FavoriteAuthor {
   error?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface ReadingSession {
+  id: string;
+  user_id: string;
+  book_id?: string; // Optional because the user can start a timer without a book selected
+  duration_minutes: number;
+  created_at: string;
 }

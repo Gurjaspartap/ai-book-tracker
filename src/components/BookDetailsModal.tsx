@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { Book } from "@/utils/types";
 import { updateBook, deleteBook } from "@/utils/booksStore";
+import { uploadBookFile } from "@/utils/storage";
+import { getSupabaseClient } from "@/utils/supabaseClient";
 
 interface BookDetailsModalProps {
   book: Book;
@@ -25,6 +27,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
   const [rating, setRating] = useState<number | undefined>(undefined);
   const [categoriesInput, setCategoriesInput] = useState("");
   const [notes, setNotes] = useState("");
+  const [language, setLanguage] = useState("en");
   
   // AI State
   const [aiLoading, setAiLoading] = useState(false);
@@ -35,6 +38,14 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant" | "system"; content: string }[]>([]);
   const [previewMode, setPreviewMode] = useState(false);
+
+  // File states
+  const [fileUrl, setFileUrl] = useState("");
+  const [fileType, setFileType] = useState("");
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [extractedBookText, setExtractedBookText] = useState("");
+  const [loadingBookText, setLoadingBookText] = useState(false);
+  const [hasFailedLoadingText, setHasFailedLoadingText] = useState(false);
 
   useEffect(() => {
     if (book) {
@@ -48,6 +59,12 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
       setRating(book.rating);
       setCategoriesInput(book.categories ? book.categories.join(", ") : "");
       setNotes(book.notes || "");
+      setLanguage(book.language || "en");
+      setFileUrl(book.file_url || "");
+      setFileType(book.file_type || "");
+      setExtractedBookText("");
+      setLoadingBookText(false);
+      setHasFailedLoadingText(false);
       
       // Reset AI states
       setAiError(null);
@@ -61,6 +78,90 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
       ]);
     }
   }, [book, isOpen]);
+
+  useEffect(() => {
+    if (activeTab === "chat" && fileUrl && !extractedBookText && !loadingBookText && !hasFailedLoadingText) {
+      const loadBookText = async () => {
+        setLoadingBookText(true);
+        setChatMessages(prev => [...prev, { role: "system" as const, content: "📖 Reading book file contents to provide context for the AI agent..." }]);
+        
+        try {
+          const supabaseUrl = localStorage.getItem("supabase_url") || "";
+          const supabaseAnonKey = localStorage.getItem("supabase_anon_key") || "";
+          
+          let accessToken = "";
+          const supabaseClient = getSupabaseClient();
+          if (supabaseClient) {
+            const { data: sessionData } = await supabaseClient.auth.getSession();
+            accessToken = sessionData?.session?.access_token || "";
+          }
+
+          const res = await fetch("/api/books/text", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              bookId: book.id,
+              supabaseUrl,
+              supabaseAnonKey,
+              accessToken
+            })
+          });
+          
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || "Failed to parse file text.");
+          }
+          
+          const data = await res.json();
+          setExtractedBookText(data.text || "");
+          setChatMessages(prev => [
+            ...prev.filter(m => !m.content.includes("Reading book file")),
+            { role: "system" as const, content: "✅ Book contents loaded successfully! The AI agent will now use the actual text of the book to answer your questions." }
+          ]);
+        } catch (err: any) {
+          console.error("Failed to load book text context:", err);
+          setHasFailedLoadingText(true);
+          setChatMessages(prev => [
+            ...prev.filter(m => !m.content.includes("Reading book file")),
+            { role: "system" as const, content: `⚠️ Could not parse book file text: ${err.message || err}. The AI will fall back to general knowledge of the book.` }
+          ]);
+        } finally {
+          setLoadingBookText(false);
+        }
+      };
+      
+      loadBookText();
+    }
+  }, [activeTab, fileUrl, book.id, extractedBookText, loadingBookText]);
+
+  // Handle uploading and linking file to existing book
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFile(true);
+    try {
+      const uploadedUrl = await uploadBookFile(file, book.id);
+      const uploadedType = file.name.split(".").pop()?.toLowerCase() || "";
+      
+      setFileUrl(uploadedUrl);
+      setFileType(uploadedType);
+
+      await updateBook(book.id, {
+        file_url: uploadedUrl,
+        file_type: uploadedType
+      });
+
+      setExtractedBookText("");
+      onBookUpdated();
+      alert("Book document uploaded and linked successfully!");
+    } catch (err: any) {
+      console.error(err);
+      alert(`Failed to upload file: ${err.message || err}`);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
 
   if (!isOpen || !book) return null;
 
@@ -93,6 +194,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
         rating: overrides?.rating !== undefined ? overrides.rating : rating,
         categories,
         notes,
+        language,
       });
 
       onBookUpdated();
@@ -268,11 +370,24 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
     const updatedMessages = [...chatMessages, { role: "user" as const, content: userMsg }];
     setChatMessages(updatedMessages);
 
-    const systemPrompt = `You are an expert literary assistant discussing the book "${title}" by ${author}.
+    let systemPrompt = `You are an expert literary assistant discussing the book "${title}" by ${author}.
     Metadata description: ${description}
     User's personal reading notes: ${notes || "No notes written yet."}
     
     Answer the user's questions about this book using this context and your knowledge of the book. Refer to their notes if they ask. Keep answers engaging and insightful.`;
+
+    if (extractedBookText) {
+      systemPrompt = `You are an expert literary assistant reading the book "${title}" by ${author}.
+      
+      Here is the actual extracted text content of the book:
+      ---
+      ${extractedBookText.substring(0, 800000)}
+      ---
+      
+      Use the provided book text to answer the user's questions with absolute accuracy. Include direct quotes, chapter references, or specific details from the text where appropriate. Keep answers engaging and insightful.
+      
+      User's personal reading notes: ${notes || "No notes written yet."}`;
+    }
 
     try {
       const responseText = await runAICall(userMsg, systemPrompt, chatMessages.filter(m => m.role !== "system"));
@@ -396,7 +511,7 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                 </div>
               </div>
 
-              <div className="form-row" style={{ marginTop: "0.5rem" }}>
+              <div className="form-row three" style={{ marginTop: "0.5rem" }}>
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: "0.7rem" }}>Rating</label>
                   <div className="rating-input">
@@ -422,6 +537,29 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                   </div>
                 </div>
                 <div className="form-group">
+                  <label className="form-label" style={{ fontSize: "0.7rem" }}>Language</label>
+                  <select
+                    className="filter-select"
+                    value={language}
+                    onChange={(e) => { 
+                      const newLang = e.target.value;
+                      setLanguage(newLang);
+                      setTimeout(() => {
+                        updateBook(book.id, { language: newLang }).then(() => onBookUpdated());
+                      }, 0);
+                    }}
+                    style={{ width: "100%", padding: "0.4rem 1.5rem 0.4rem 0.6rem" }}
+                  >
+                    <option value="en">English</option>
+                    <option value="pa">Punjabi (ਪੰਜਾਬੀ)</option>
+                    <option value="hi">Hindi (हिन्दी)</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                  </select>
+                </div>
+                <div className="form-group">
                   <label className="form-label" style={{ fontSize: "0.7rem" }}>Cover Image Link</label>
                   <input
                     type="text"
@@ -434,6 +572,104 @@ export default function BookDetailsModal({ book, isOpen, onClose, onBookUpdated 
                   />
                 </div>
               </div>
+
+              <div className="form-group" style={{ marginTop: "0.5rem" }}>
+                <label className="form-label" style={{ fontSize: "0.7rem" }}>Attached Book Document (EPUB/PDF)</label>
+                {fileUrl ? (
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "rgba(99, 102, 241, 0.05)",
+                    border: "1px solid var(--border-color)",
+                    padding: "0.4rem 0.6rem",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "0.8rem"
+                  }}>
+                    <span style={{ 
+                      maxWidth: "200px", 
+                      overflow: "hidden", 
+                      textOverflow: "ellipsis", 
+                      whiteSpace: "nowrap",
+                      fontWeight: "bold",
+                      display: "flex",
+                      gap: "0.3rem",
+                      alignItems: "center"
+                    }}>
+                      <span>📄</span>
+                      {fileUrl.split("/").pop() || `${book.title}.${fileType}`}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem", background: "rgba(248, 113, 113, 0.1)", color: "#f87171", border: "1px solid rgba(248, 113, 113, 0.2)" }}
+                      onClick={async () => {
+                        if (confirm("Are you sure you want to remove this attached file?")) {
+                          try {
+                            await updateBook(book.id, { file_url: null, file_type: null, extracted_text_url: null });
+                            setFileUrl("");
+                            setFileType("");
+                            setExtractedBookText("");
+                            onBookUpdated();
+                          } catch (err) {
+                            alert("Failed to remove attached file.");
+                          }
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ padding: "0.2rem 0.6rem", fontSize: "0.75rem", marginLeft: "0.5rem" }}
+                      onClick={() => {
+                        window.location.href = `/read/${book.id}`;
+                      }}
+                    >
+                      📖 Read Book
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="file"
+                      id="details-file-upload"
+                      accept=".pdf,.epub"
+                      onChange={handleFileUpload}
+                      style={{ display: "none" }}
+                      disabled={uploadingFile}
+                    />
+                    <label
+                      htmlFor="details-file-upload"
+                      className="btn btn-secondary"
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.8rem",
+                        width: "100%",
+                        textAlign: "center",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {uploadingFile ? (
+                        <>
+                          <span className="ai-loading-spinner" style={{ width: "0.8rem", height: "0.8rem", borderWidth: "1.5px" }}></span>
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <span>➕</span> Attach PDF or EPUB
+                        </>
+                      )}
+                    </label>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
 

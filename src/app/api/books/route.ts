@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     if (googleFailed || items.length === 0) {
       console.log(`Falling back to OpenLibrary Search API for query: "${query}"`);
       try {
-        const fields = "key,title,author_name,cover_i,subject,number_of_pages_median,first_publish_year";
+        const fields = "key,title,author_name,cover_i,subject,number_of_pages_median,first_publish_year,language";
         let olQuery = query;
         if (query.startsWith("inauthor:")) {
           olQuery = `author:${query.substring(9)}`;
@@ -79,6 +79,11 @@ export async function GET(request: Request) {
               ? `https://covers.openlibrary.org/b/id/${coverId}-S.jpg`
               : "";
 
+            // Normalize 3-letter OpenLibrary code to 2-letter if common
+            let olLang = doc.language && doc.language.length > 0 ? doc.language[0] : "en";
+            if (olLang === "eng") olLang = "en";
+            if (olLang === "pan") olLang = "pa";
+
             return {
               id: `ol_${doc.key.split("/").pop()}`, // clean work key
               volumeInfo: {
@@ -91,6 +96,7 @@ export async function GET(request: Request) {
                 } : undefined,
                 pageCount: doc.number_of_pages_median || 0,
                 categories: subjects.slice(0, 5), // take first 5 tags
+                language: olLang
               }
             };
           });

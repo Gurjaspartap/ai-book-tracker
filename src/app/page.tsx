@@ -11,14 +11,17 @@ import BookCard from "@/components/BookCard";
 import AddBookModal from "@/components/AddBookModal";
 import BookDetailsModal from "@/components/BookDetailsModal";
 import SettingsModal from "@/components/SettingsModal";
+
 import AuthModal from "@/components/AuthModal";
+import ReadingStatsDashboard from "@/components/ReadingStatsDashboard";
+import PomodoroTimer from "@/components/PomodoroTimer";
 
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Navigation Tabs State
-  const [activeView, setActiveView] = useState<"shelf" | "insights" | "authors">("shelf");
+  const [activeView, setActiveView] = useState<"shelf" | "insights" | "authors" | "stats">("shelf");
 
   // Shelf View: Filtering & Sorting State
   const [activeTab, setActiveTab] = useState<"all" | "will-read" | "reading" | "completed" | "not-completed">("all");
@@ -44,6 +47,7 @@ export default function Home() {
   const [authInitialMode, setAuthInitialMode] = useState<"signin" | "signup" | "forgot" | "update">("signin");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [globalTimerOpen, setGlobalTimerOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
   const requestCountRef = useRef(0);
@@ -444,11 +448,22 @@ export default function Home() {
             ⚙️ Settings
           </button>
           
+          <button className="btn btn-secondary" onClick={() => setGlobalTimerOpen(!globalTimerOpen)} title="Focus Timer">
+            ⏱️ Timer
+          </button>
+          
           <button className="btn btn-primary" onClick={() => setAddOpen(true)}>
             ➕ Add Book
           </button>
         </div>
       </header>
+
+      {/* GLOBAL POMODORO TIMER OVERLAY */}
+      {globalTimerOpen && (
+        <div style={{ position: "fixed", bottom: "2rem", right: "2rem", zIndex: 999 }}>
+          <PomodoroTimer onClose={() => setGlobalTimerOpen(false)} />
+        </div>
+      )}
 
       {/* METRICS CARD DISPLAY */}
       <section className="metrics-grid">
@@ -493,6 +508,12 @@ export default function Home() {
           onClick={() => setActiveView("authors")}
         >
           ⭐ Favorite Authors
+        </button>
+        <button 
+          className={`view-tab-btn ${activeView === "stats" ? "active" : ""}`}
+          onClick={() => setActiveView("stats")}
+        >
+          📊 Reading Stats
         </button>
       </nav>
 
@@ -797,6 +818,19 @@ export default function Home() {
         </main>
       )}
 
+      {/* VIEW PANEL 4: READING STATS */}
+      {activeView === "stats" && (
+        <main className="stats-container">
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <h2>Reading Stats & Streaks</h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginTop: "-0.5rem" }}>
+              Track your daily reading habit and see how much time you've spent focused.
+            </p>
+          </div>
+          <ReadingStatsDashboard />
+        </main>
+      )}
+
       {/* EMBEDDED MODALS */}
       <AuthModal
         isOpen={authOpen}
@@ -815,6 +849,7 @@ export default function Home() {
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
         onBookAdded={loadData}
+        existingBooks={books}
       />
 
       {selectedBook && (
