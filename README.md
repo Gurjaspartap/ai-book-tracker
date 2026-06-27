@@ -16,7 +16,8 @@ A modern web application for tracking and managing your reading journey with AI-
 ## 📸 Screenshots
 
 ### Home Page
-<img width="2536" height="1268" alt="image" src="https://github.com/user-attachments/assets/8e36736c-6ad4-4410-a6ee-0ff88e793c24" />
+<img width="2514" height="1268" alt="image" src="https://github.com/user-attachments/assets/d977f55e-9305-4a68-b038-0f1736ac0f6f" />
+
 
 
 ### Login / Account
